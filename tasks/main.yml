@@ -1,0 +1,49 @@
+---
+- name: InfluxDB Repository (RedHat)
+  block:
+    - name: InfluxDB Repository GPG key
+      rpm_key:
+        key: https://repos.influxdata.com/influxdata-archive_compat.key
+        state: present
+
+    - name: InfluxDB Repository
+      yum_repository:
+        name: InfluxDB
+        description: InfluxDB
+        baseurl: https://repos.influxdata.com/rhel/{{ansible_distribution_major_version}}/{{ansible_architecture}}/stable/
+        enabled: yes
+        gpgcheck : yes
+        gpgkey: https://repos.influxdata.com/influxdata-archive_compat.key
+  when:
+    - ansible_os_family == "RedHat"
+
+- name: Install package
+  package:
+    state: latest
+    name:
+      - influxdb2
+      - influxdb2-cli
+
+- name: Firewall rules
+  firewalld:
+    port: "8086/tcp"
+    state: enabled
+    permanent: true
+    immediate: true
+
+- name: Generate config.toml file from template
+  template:
+    src: config.j2
+    dest: /etc/influxdb/config.toml
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - InfluxDB
+
+- name: Enable daemon
+  service:
+    name: influxdb
+    enabled: yes
+    state: started
+...
